@@ -19,7 +19,7 @@
 
 也可在线使用：[https://xiyunzhang0401.github.io/pdf-tools/pdf-tools.html](https://xiyunzhang0401.github.io/pdf-tools/pdf-tools.html)
 
-> **Windows 用户注意**：如果打开页面时报错或功能异常，请右键 `pdf-tools.html` → **属性** → 勾选 **解除锁定** → 确定，然后重新打开。
+> **Windows 用户注意**：下载的 PDF 如果打开时报错，请右键该 PDF 文件 → **属性** → 勾选 **解除锁定** → 确定，然后重新打开。
 
 ## 技术
 
