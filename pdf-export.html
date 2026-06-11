@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF 导出工具</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    --primary: #1e3a5f;
+    --primary-hover: #162d4a;
+    --accent: #b8860b;
+    --bg: #f5f0eb;
+    --card: #ffffff;
+    --border: #d8d0c8;
+    --text: #2d2a24;
+    --text-secondary: #6b6560;
+    --radius: 6px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.06);
+    --sidebar-w: 200px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Georgia, "Noto Serif SC", "Times New Roman", serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+  }
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: var(--sidebar-w);
+    height: 100vh; background: var(--primary);
+    display: flex; flex-direction: column;
+    padding: 32px 0; z-index: 100;
+  }
+  .sidebar .brand { padding: 0 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 16px; }
+  .sidebar .brand h2 { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar .brand p { color: rgba(255,255,255,0.5); font-size: 11px; margin-top: 4px; font-family: system-ui, sans-serif; }
+  .sidebar a { display: block; padding: 10px 20px; color: rgba(255,255,255,0.65); text-decoration: none; font-size: 14px; font-family: system-ui, sans-serif; font-weight: 500; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar a:hover { color: #fff; background: rgba(255,255,255,0.06); }
+  .sidebar a.active { color: #fff; background: rgba(255,255,255,0.1); border-left-color: var(--accent); }
+  .sidebar .footer { margin-top: auto; padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: rgba(255,255,255,0.3); font-family: system-ui, sans-serif; }
+  .main { margin-left: var(--sidebar-w); flex: 1; padding: 40px 36px; max-width: calc(100vw - var(--sidebar-w)); }
+  .container { max-width: 960px; width: 100%; }
+  h1 { font-family: Georgia, "Noto Serif SC", serif; font-size: 26px; font-weight: 700; margin-bottom: 4px; color: var(--primary); letter-spacing: 0.3px; }
+  .subtitle { color: var(--text-secondary); margin-bottom: 28px; font-size: 14px; font-family: system-ui, sans-serif; }
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); padding: 28px; margin-bottom: 20px; }
+  .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.25s; }
+  .drop-zone:hover { border-color: var(--primary); background: #f8f6f3; }
+  .drop-zone.dragover { border-color: var(--primary); background: #efece7; transform: scale(1.01); }
+  .drop-zone-icon { font-size: 32px; margin-bottom: 8px; color: var(--primary); opacity: 0.6; }
+  .drop-zone-text { font-size: 15px; font-weight: 500; font-family: system-ui, sans-serif; }
+  .drop-zone-hint { font-size: 13px; color: var(--text-secondary); margin-top: 4px; font-family: system-ui, sans-serif; }
+  .drop-zone input { display: none; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 18px; border-radius: var(--radius); border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: system-ui, sans-serif; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-primary:disabled { background: #b0a8a0; cursor: not-allowed; }
+  .btn-outline { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--bg); }
+  .btn-sm { padding: 4px 12px; font-size: 12px; }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-accent:hover { background: #9a7209; }
+  .btn-accent.active { background: var(--accent); color: #fff; }
+  .action-bar { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; align-items: center; }
+  .progress-bar { width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 16px; display: none; }
+  .progress-bar .fill { height: 100%; width: 0%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
+  .status { text-align: center; margin-top: 12px; font-size: 14px; color: var(--text-secondary); font-family: system-ui, sans-serif; }
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; font-family: system-ui, sans-serif; }
+  .toast.show { opacity: 1; }
+  .file-info-card { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: #faf8f6; border: 1px solid var(--border); border-radius: var(--radius); margin-top: 16px; }
+  .file-info-card .icon { font-size: 28px; }
+  .file-info-card .info { flex: 1; }
+  .file-info-card .name { font-size: 14px; font-weight: 600; }
+  .file-info-card .meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .file-info-card .remove-btn { background: none; border: none; color: #b0a8a0; cursor: pointer; font-size: 22px; padding: 4px 8px; border-radius: 4px; }
+  .file-info-card .remove-btn:hover { color: #b91c1c; background: #faf6f5; }
+
+  /* Export options */
+  .export-options { margin-top: 20px; }
+  .export-options h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; font-family: system-ui, sans-serif; color: var(--text); }
+  .preset-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .preset-bar .btn { font-size: 13px; }
+  .preset-bar .btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .range-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .range-row label { font-size: 13px; color: var(--text-secondary); font-family: system-ui, sans-serif; }
+  .range-row input[type="text"] { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; width: 220px; outline: none; font-family: system-ui, sans-serif; }
+  .range-row input[type="text"]:focus { border-color: var(--primary); }
+  .range-row .hint { font-size: 11px; color: var(--text-secondary); font-family: system-ui, sans-serif; }
+
+  /* Page thumbnails */
+  .page-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; max-height: 400px; overflow-y: auto; padding: 4px 0; }
+  .page-thumb { position: relative; width: 120px; cursor: pointer; border: 2px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: all 0.15s; flex-shrink: 0; background: #fff; }
+  .page-thumb:hover { border-color: #b0a8a0; }
+  .page-thumb.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(184,134,11,0.2); }
+  .page-thumb img { display: block; width: 100%; height: auto; }
+  .page-thumb .page-label { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.6); color: #fff; font-size: 11px; text-align: center; padding: 3px 0; font-family: system-ui, sans-serif; }
+  .page-thumb .page-check { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.9); border: 2px solid #b0a8a0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; transition: all 0.15s; }
+  .page-thumb.selected .page-check { background: var(--accent); border-color: var(--accent); }
+
+  .preview-card { padding: 20px; }
+  .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .preview-header h2 { font-size: 16px; font-weight: 600; font-family: system-ui, sans-serif; }
+  .preview-info { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; font-family: system-ui, sans-serif; }
+  .preview-frame { width: 100%; height: 520px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }
+
+  .summary-bar { font-size: 13px; color: var(--text-secondary); margin-top: 8px; font-family: system-ui, sans-serif; }
+
+  @media (max-width: 700px) { .card { padding: 20px; } .drop-zone { padding: 28px 16px; } h1 { font-size: 22px; } .page-thumb { width: 90px; } }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="brand">
+    <h2>PDF 工具</h2>
+    <p>浏览器本地处理</p>
+  </div>
+  <a href="pdf-merger.html">插入模式</a>
+  <a href="pdf-merger1.html">合并模式</a>
+  <a href="pdf-export.html" class="active">导出模式</a>
+  <div class="footer">文件不会上传至服务器</div>
+</div>
+<div class="main">
+<div class="container">
+  <h1>PDF 导出</h1>
+  <p class="subtitle">从 PDF 中提取指定页面，支持全部、奇数页、偶数页或自定义页码范围</p>
+
+  <div class="card">
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-zone-icon">📄</div>
+      <div class="drop-zone-text">点击选择 PDF 文件，或拖拽到此处</div>
+      <div class="drop-zone-hint">每次选择一个 PDF 文件</div>
+      <input type="file" id="fileInput" accept=".pdf,application/pdf">
+    </div>
+
+    <div id="fileInfo"></div>
+
+    <div class="export-options" id="exportOptions" style="display:none;">
+      <h3>导出范围</h3>
+      <div class="preset-bar">
+        <button class="btn btn-outline active" id="presetAll" onclick="setPreset('all')">全部</button>
+        <button class="btn btn-outline" id="presetOdd" onclick="setPreset('odd')">奇数页</button>
+        <button class="btn btn-outline" id="presetEven" onclick="setPreset('even')">偶数页</button>
+      </div>
+      <div class="range-row">
+        <label>自定义：</label>
+        <input type="text" id="rangeInput" placeholder="例: 1-3,5,7-9" oninput="onRangeInput()">
+        <span class="hint">页码从 1 开始，支持跳页如 "1-3,5,7-9"</span>
+      </div>
+
+      <div id="pageThumbs" class="page-grid"></div>
+      <div class="summary-bar" id="summaryBar"></div>
+    </div>
+
+    <div class="action-bar" id="actionBar" style="display:none;">
+      <button class="btn btn-primary" id="exportBtn" disabled>导出并预览</button>
+      <button class="btn btn-outline" id="clearFileBtn">重新选择</button>
+    </div>
+
+    <div class="progress-bar" id="progressBar"><div class="fill" id="progressFill"></div></div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="card preview-card" id="previewCard" style="display:none;">
+    <div class="preview-header">
+      <h2>预览</h2>
+      <button class="btn btn-outline btn-sm" id="closePreviewBtn">关闭预览</button>
+    </div>
+    <div class="preview-info" id="previewInfo"></div>
+    <iframe class="preview-frame" id="previewIframe"></iframe>
+    <div style="margin-top:10px;text-align:center;">
+      <button class="btn btn-primary" id="downloadBtn">导出</button>
+    </div>
+  </div>
+
+  <div style="text-align:center;font-size:12px;color:var(--text-secondary);font-family:system-ui,sans-serif;margin-top:4px;">
+    使用 PDF-Lib + PDF.js 在浏览器端处理，文件不会离开你的设备
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  // DOM
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const fileInfo = document.getElementById('fileInfo');
+  const exportOptions = document.getElementById('exportOptions');
+  const pageThumbs = document.getElementById('pageThumbs');
+  const summaryBar = document.getElementById('summaryBar');
+  const actionBar = document.getElementById('actionBar');
+  const exportBtn = document.getElementById('exportBtn');
+  const clearFileBtn = document.getElementById('clearFileBtn');
+  const progressBar = document.getElementById('progressBar');
+  const progressFill = document.getElementById('progressFill');
+  const statusEl = document.getElementById('status');
+  const toast = document.getElementById('toast');
+  const previewCard = document.getElementById('previewCard');
+  const previewIframe = document.getElementById('previewIframe');
+  const previewInfo = document.getElementById('previewInfo');
+  const closePreviewBtn = document.getElementById('closePreviewBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const rangeInput = document.getElementById('rangeInput');
+
+  // State
+  let currentFile = null; // { id, name, size, file, numPages, thumbnails:[] }
+  let selectedPages = new Set();
+  let lastResultBytes = null;
+  let lastBlobUrl = null;
+  let currentPreset = 'all';
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function showToast(msg, dur) {
+    if (dur === undefined) dur = 2500;
+    toast.textContent = msg; toast.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.remove('show'), dur);
+  }
+
+  function setStatus(msg) { statusEl.textContent = msg; }
+  function setProgress(pct) { progressBar.style.display = 'block'; progressFill.style.width = pct + '%'; }
+  function hideProgress() { progressBar.style.display = 'none'; progressFill.style.width = '0%'; }
+
+  // Preset buttons
+  function setPreset(preset) {
+    currentPreset = preset;
+    document.querySelectorAll('.preset-bar .btn').forEach(function(b) { b.classList.remove('active'); });
+    document.getElementById('preset' + preset.charAt(0).toUpperCase() + preset.slice(1)).classList.add('active');
+
+    if (!currentFile) return;
+    if (preset === 'all') {
+      selectedPages = new Set(Array.from({ length: currentFile.numPages }, function(_, i) { return i; }));
+    } else if (preset === 'odd') {
+      selectedPages = new Set();
+      for (var i = 0; i < currentFile.numPages; i++) { if ((i + 1) % 2 === 1) selectedPages.add(i); }
+    } else if (preset === 'even') {
+      selectedPages = new Set();
+      for (var i = 0; i < currentFile.numPages; i++) { if ((i + 1) % 2 === 0) selectedPages.add(i); }
+    }
+    rangeInput.value = '';
+    renderThumbs();
+    updateSummary();
+  }
+  window.setPreset = setPreset;
+
+  // Range input
+  function onRangeInput() {
+    if (!currentFile) return;
+    var val = rangeInput.value.trim();
+    if (!val) { setPreset(currentPreset); return; }
+    currentPreset = null;
+    document.querySelectorAll('.preset-bar .btn').forEach(function(b) { b.classList.remove('active'); });
+
+    var result = parseRange(val, currentFile.numPages);
+    if (result === null) {
+      selectedPages = new Set();
+      renderThumbs();
+      updateSummary();
+      return;
+    }
+    selectedPages = new Set(result);
+    renderThumbs();
+    updateSummary();
+  }
+  window.onRangeInput = onRangeInput;
+
+  function parseRange(input, maxPage) {
+    var s = input.trim().toLowerCase();
+    if (!s) return [];
+    var parts = s.split(',');
+    var pages = new Set();
+    for (var pi = 0; pi < parts.length; pi++) {
+      var trimmed = parts[pi].trim();
+      if (!trimmed) continue;
+      var m = trimmed.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+      if (!m) return null;
+      var start = parseInt(m[1]);
+      var end = m[2] !== undefined ? parseInt(m[2]) : start;
+      if (start < 1 || end < 1 || start > maxPage || end > maxPage) return null;
+      for (var i = Math.min(start, end); i <= Math.max(start, end); i++) {
+        pages.add(i - 1);
+      }
+    }
+    return [...pages].sort(function(a, b) { return a - b; });
+  }
+
+  // Load PDF
+  async function loadFile(file) {
+    if (!file.name.toLowerCase().endsWith('.pdf')) { showToast('请选择 PDF 文件'); return; }
+    if (currentFile && currentFile.name === file.name && currentFile.size === file.size) return;
+
+    var id = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    currentFile = { id: id, name: file.name, size: file.size, file: file, numPages: 0, thumbnails: [] };
+    renderFileInfo();
+
+    try {
+      var buf = await file.arrayBuffer();
+      var pdfDoc = await pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
+      currentFile.numPages = pdfDoc.numPages;
+
+      var thumbs = [];
+      for (var i = 1; i <= Math.min(pdfDoc.numPages, 20); i++) {
+        try {
+          var page = await pdfDoc.getPage(i);
+          var vp = page.getViewport({ scale: 0.28 });
+          var canvas = document.createElement('canvas');
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          var ctx = canvas.getContext('2d');
+          await page.render({ canvasContext: ctx, viewport: vp }).promise;
+          thumbs.push(canvas.toDataURL('image/jpeg', 0.6));
+        } catch(e) { thumbs.push(null); }
+      }
+      pdfDoc.destroy();
+      currentFile.thumbnails = thumbs;
+
+      exportOptions.style.display = 'block';
+      actionBar.style.display = 'flex';
+      setPreset('all');
+    } catch(e) {
+      showToast('无法加载 PDF: ' + e.message);
+      currentFile = null;
+      renderFileInfo();
+    }
+  }
+
+  function renderFileInfo() {
+    if (!currentFile) {
+      fileInfo.innerHTML = '';
+      exportOptions.style.display = 'none';
+      actionBar.style.display = 'none';
+      return;
+    }
+    fileInfo.innerHTML =
+      '<div class="file-info-card">' +
+        '<span class="icon">📄</span>' +
+        '<div class="info">' +
+          '<div class="name">' + escHtml(currentFile.name) + '</div>' +
+          '<div class="meta">' + currentFile.numPages + ' 页 · ' + formatSize(currentFile.size) + '</div>' +
+        '</div>' +
+        '<button class="remove-btn" onclick="clearFile()" title="移除">×</button>' +
+      '</div>';
+  }
+
+  function clearFile() {
+    currentFile = null;
+    selectedPages = new Set();
+    lastResultBytes = null;
+    if (lastBlobUrl) { URL.revokeObjectURL(lastBlobUrl); lastBlobUrl = null; }
+    previewCard.style.display = 'none';
+    previewIframe.src = '';
+    renderFileInfo();
+    exportOptions.style.display = 'none';
+    actionBar.style.display = 'none';
+    setStatus(''); hideProgress();
+    exportBtn.disabled = true;
+  }
+  window.clearFile = clearFile;
+
+  function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function togglePage(idx) {
+    if (selectedPages.has(idx)) selectedPages.delete(idx);
+    else selectedPages.add(idx);
+    currentPreset = null;
+    document.querySelectorAll('.preset-bar .btn').forEach(function(b) { b.classList.remove('active'); });
+    rangeInput.value = '';
+    renderThumbs();
+    updateSummary();
+  }
+  window.togglePage = togglePage;
+
+  function renderThumbs() {
+    if (!currentFile) { pageThumbs.innerHTML = ''; return; }
+    var html = '';
+    for (var i = 0; i < currentFile.numPages; i++) {
+      var thumb = currentFile.thumbnails[i];
+      var sel = selectedPages.has(i);
+      html +=
+        '<div class="page-thumb ' + (sel ? 'selected' : '') + '" onclick="togglePage(' + i + ')" title="' + (sel ? '取消选择' : '选择此页') + '">' +
+          (thumb ? '<img src="' + thumb + '" alt="第' + (i+1) + '页">' : '<div style="height:90px;display:flex;align-items:center;justify-content:center;background:#f8fafb;color:#b0a8a0;font-size:12px;">第' + (i+1) + '页</div>') +
+          '<div class="page-label">第' + (i+1) + '页</div>' +
+          '<div class="page-check">' + (sel ? '✓' : '') + '</div>' +
+        '</div>';
+    }
+    pageThumbs.innerHTML = html;
+  }
+
+  function updateSummary() {
+    var sorted = [...selectedPages].sort(function(a, b) { return a - b; });
+    if (sorted.length === 0) {
+      summaryBar.textContent = '未选择任何页面';
+      exportBtn.disabled = true;
+      return;
+    }
+    exportBtn.disabled = false;
+    var label = '已选择 ' + sorted.length + ' 页：';
+    var ranges = [];
+    var start = sorted[0], end = sorted[0];
+    for (var i = 1; i < sorted.length; i++) {
+      if (sorted[i] === end + 1) { end = sorted[i]; }
+      else { ranges.push(start === end ? '' + (start + 1) : (start + 1) + '-' + (end + 1)); start = end = sorted[i]; }
+    }
+    ranges.push(start === end ? '' + (start + 1) : (start + 1) + '-' + (end + 1));
+    summaryBar.textContent = label + ranges.join(', ');
+  }
+
+  // Export
+  async function doExport() {
+    if (!currentFile || selectedPages.size === 0) return;
+    var sorted = [...selectedPages].sort(function(a, b) { return a - b; });
+    exportBtn.disabled = true;
+    previewCard.style.display = 'none';
+    setStatus('正在导出...'); setProgress(0);
+
+    try {
+      var buf = await currentFile.file.arrayBuffer();
+      var srcDoc = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+      var newDoc = await PDFLib.PDFDocument.create();
+
+      for (var i = 0; i < sorted.length; i++) {
+        setProgress((i / sorted.length) * 90);
+        var [copied] = await newDoc.copyPages(srcDoc, [sorted[i]]);
+        newDoc.addPage(copied);
+      }
+
+      setProgress(95); setStatus('正在生成...');
+      var bytes = await newDoc.save();
+      setProgress(100); setStatus('完成！');
+
+      lastResultBytes = bytes;
+      if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+      var blob = new Blob([bytes], { type: 'application/pdf' });
+      lastBlobUrl = URL.createObjectURL(blob);
+
+      previewIframe.src = lastBlobUrl;
+      previewInfo.textContent = '导出完成 · ' + newDoc.getPageCount() + ' 页 · ' + (blob.size / 1024).toFixed(1) + ' KB';
+      previewCard.style.display = 'block';
+      previewCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      showToast('导出完成！共 ' + newDoc.getPageCount() + ' 页');
+    } catch (err) {
+      showToast('导出失败：' + err.message);
+      setStatus('出错了，请重试');
+    } finally {
+      exportBtn.disabled = false;
+      setTimeout(hideProgress, 3000);
+    }
+  }
+
+  // Events
+  dropZone.addEventListener('click', function() { fileInput.click(); });
+  fileInput.addEventListener('change', function() { if (fileInput.files.length > 0) loadFile(fileInput.files[0]); fileInput.value = ''; });
+  dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('dragover'); });
+  dropZone.addEventListener('drop', function(e) { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) loadFile(e.dataTransfer.files[0]); });
+
+  exportBtn.addEventListener('click', doExport);
+  clearFileBtn.addEventListener('click', clearFile);
+
+  closePreviewBtn.addEventListener('click', function() { previewCard.style.display = 'none'; previewIframe.src = ''; });
+
+  downloadBtn.addEventListener('click', function() {
+    if (!lastBlobUrl) return;
+    var a = document.createElement('a'); a.href = lastBlobUrl; a.download = '导出.pdf';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+
+</script>
+</body>
+</html>

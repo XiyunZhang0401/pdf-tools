@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF 合并工具</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+  :root {
+    --primary: #1e3a5f;
+    --primary-light: #2c5282;
+    --primary-hover: #162d4a;
+    --accent: #b8860b;
+    --bg: #f5f0eb;
+    --card: #ffffff;
+    --border: #d8d0c8;
+    --text: #2d2a24;
+    --text-secondary: #6b6560;
+    --radius: 6px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.06);
+    --sidebar-w: 200px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Georgia, "Noto Serif SC", "Times New Roman", serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+  }
+
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: var(--sidebar-w);
+    height: 100vh; background: var(--primary);
+    display: flex; flex-direction: column;
+    padding: 32px 0; z-index: 100;
+  }
+  .sidebar .brand { padding: 0 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 16px; }
+  .sidebar .brand h2 { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar .brand p { color: rgba(255,255,255,0.5); font-size: 11px; margin-top: 4px; font-family: system-ui, sans-serif; }
+  .sidebar a { display: block; padding: 10px 20px; color: rgba(255,255,255,0.65); text-decoration: none; font-size: 14px; font-family: system-ui, sans-serif; font-weight: 500; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar a:hover { color: #fff; background: rgba(255,255,255,0.06); }
+  .sidebar a.active { color: #fff; background: rgba(255,255,255,0.1); border-left-color: var(--accent); }
+  .sidebar .footer { margin-top: auto; padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: rgba(255,255,255,0.3); font-family: system-ui, sans-serif; }
+
+  .main { margin-left: var(--sidebar-w); flex: 1; padding: 40px 36px; max-width: calc(100vw - var(--sidebar-w)); }
+  .container { max-width: 960px; width: 100%; }
+
+  h1 { font-family: Georgia, "Noto Serif SC", serif; font-size: 26px; font-weight: 700; margin-bottom: 4px; color: var(--primary); letter-spacing: 0.3px; }
+  .subtitle { color: var(--text-secondary); margin-bottom: 28px; font-size: 14px; font-family: system-ui, sans-serif; }
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); padding: 28px; margin-bottom: 20px; }
+  .drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 48px 20px; text-align: center; cursor: pointer; transition: all 0.25s; }
+  .drop-zone:hover { border-color: var(--primary); background: #f5f3ff; }
+  .drop-zone.dragover { border-color: var(--primary); background: #eef2ff; transform: scale(1.01); }
+  .drop-zone-icon { font-size: 40px; margin-bottom: 12px; color: var(--primary); }
+  .drop-zone-text { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+  .drop-zone-hint { font-size: 13px; color: var(--text-secondary); }
+  .drop-zone input { display: none; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 18px; border-radius: var(--radius); border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: system-ui, sans-serif; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-primary:disabled { background: #b0a8a0; cursor: not-allowed; }
+  .btn-outline { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--bg); }
+  .btn-sm { padding: 4px 12px; font-size: 12px; }
+  .file-list { margin-top: 20px; }
+  .file-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: #fafbfc; transition: all 0.2s; cursor: grab; user-select: none; }
+  .file-item:active { cursor: grabbing; }
+  .file-item.dragging { opacity: 0.4; }
+  .file-item.drag-over { border-color: var(--primary); background: #eef2ff; }
+  .file-item .drag-handle { color: #94a3b8; font-size: 18px; cursor: grab; }
+  .file-item .file-icon { color: var(--primary); font-size: 20px; }
+  .file-item .file-info { flex: 1; min-width: 0; }
+  .file-item .file-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-item .file-size { font-size: 12px; color: var(--text-secondary); }
+  .file-item .file-order { font-size: 12px; color: var(--primary); font-weight: 600; margin-right: 4px; }
+  .file-item .remove-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 4px; line-height: 1; }
+  .file-item .remove-btn:hover { color: #dc2626; background: #fef2f2; }
+  .empty-state { text-align: center; padding: 20px 0; color: var(--text-secondary); font-size: 14px; }
+  .action-bar { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+  .progress-bar { width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 16px; display: none; }
+  .progress-bar .fill { height: 100%; width: 0%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
+  .status { text-align: center; margin-top: 12px; font-size: 14px; color: var(--text-secondary); }
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .preview-card { padding: 20px; }
+  .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .preview-header h2 { font-size: 16px; font-weight: 600; }
+  .preview-info { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+  .preview-frame { width: 100%; height: 520px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+
+  @media (max-width: 700px) { .card { padding: 18px; } .drop-zone { padding: 28px 16px; } h1 { font-size: 22px; } }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="brand">
+    <h2>PDF 工具</h2>
+    <p>浏览器本地处理</p>
+  </div>
+  <a href="pdf-merger.html">插入模式</a>
+  <a href="pdf-merger1.html" class="active">合并模式</a>
+  <a href="pdf-export.html">导出模式</a>
+  <div class="footer">文件不会上传至服务器</div>
+</div>
+<div class="main">
+<div class="container">
+
+  <h1>PDF 合并</h1>
+  <p class="subtitle">将多个 PDF 文件按顺序合并为一个 — 所有操作均在浏览器本地完成</p>
+
+  <div class="card">
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-zone-icon">📄</div>
+      <div class="drop-zone-text">点击选择 PDF 文件，或拖拽到此处</div>
+      <div class="drop-zone-hint">支持同时选择多个文件，拖拽可调整合并顺序</div>
+      <input type="file" id="fileInput" multiple accept=".pdf,application/pdf">
+    </div>
+
+    <div class="file-list" id="fileList">
+      <div class="empty-state">暂无文件，请添加 PDF</div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn btn-primary" id="mergeBtn" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m7 10 5-5 5 5"/></svg>
+        合并并预览
+      </button>
+      <button class="btn btn-outline" id="clearBtn" disabled>清空</button>
+    </div>
+
+    <div class="progress-bar" id="progressBar"><div class="fill" id="progressFill"></div></div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="card preview-card" id="previewCard" style="display:none;">
+    <div class="preview-header">
+      <h2>预览</h2>
+      <button class="btn btn-outline" id="closePreviewBtn" style="padding:4px 14px;font-size:13px;">关闭预览</button>
+    </div>
+    <div class="preview-info" id="previewInfo"></div>
+    <iframe class="preview-frame" id="previewIframe"></iframe>
+    <div style="margin-top:10px;text-align:center;">
+      <button class="btn btn-primary" id="downloadBtn">下载到本地</button>
+    </div>
+  </div>
+
+  <div style="text-align:center;font-size:12px;color:var(--text-secondary);">
+    使用 PDF-Lib 在浏览器端处理，文件不会离开你的设备
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const fileListEl = document.getElementById('fileList');
+  const mergeBtn = document.getElementById('mergeBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const progressBar = document.getElementById('progressBar');
+  const progressFill = document.getElementById('progressFill');
+  const statusEl = document.getElementById('status');
+  const toast = document.getElementById('toast');
+  const previewCard = document.getElementById('previewCard');
+  const previewIframe = document.getElementById('previewIframe');
+  const previewInfo = document.getElementById('previewInfo');
+  const closePreviewBtn = document.getElementById('closePreviewBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  let files = [];
+  let lastBlobUrl = null;
+  let dragIndex = null;
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function showToast(msg, dur) {
+    if (dur === undefined) dur = 2500;
+    toast.textContent = msg; toast.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.remove('show'), dur);
+  }
+  function setStatus(msg) { statusEl.textContent = msg; }
+  function setProgress(pct) { progressBar.style.display = 'block'; progressFill.style.width = pct + '%'; }
+  function hideProgress() { progressBar.style.display = 'none'; progressFill.style.width = '0%'; }
+  function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function addFiles(newFiles) {
+    for (const f of newFiles) {
+      if (!f.name.toLowerCase().endsWith('.pdf')) { showToast('跳过非 PDF 文件: ' + f.name); continue; }
+      if (files.some(function(ex) { return ex.name === f.name && ex.size === f.size; })) continue;
+      files.push({ id: Date.now() + '_' + Math.random().toString(36).slice(2, 6), name: f.name, size: f.size, file: f });
+    }
+    render();
+  }
+
+  function removeFile(id) { files = files.filter(function(f) { return String(f.id) !== String(id); }); render(); }
+  function clearAll() { files = []; previewCard.style.display = 'none'; previewIframe.src = ''; if (lastBlobUrl) { URL.revokeObjectURL(lastBlobUrl); lastBlobUrl = null; } render(); }
+
+  function render() {
+    if (files.length === 0) {
+      fileListEl.innerHTML = '<div class="empty-state">暂无文件，请添加 PDF</div>';
+      mergeBtn.disabled = true; clearBtn.disabled = true;
+      return;
+    }
+    mergeBtn.disabled = files.length < 2; clearBtn.disabled = false;
+
+    var html = '';
+    files.forEach(function(f, i) {
+      html +=
+        '<div class="file-item" data-index="' + i + '" draggable="true">' +
+          '<span class="drag-handle">⠿</span>' +
+          '<span class="file-order">#' + (i + 1) + '</span>' +
+          '<span class="file-icon">📄</span>' +
+          '<div class="file-info">' +
+            '<div class="file-name">' + escHtml(f.name) + '</div>' +
+            '<div class="file-size">' + formatSize(f.size) + '</div>' +
+          '</div>' +
+          '<button class="remove-btn" data-id="' + f.id + '" title="移除">×</button>' +
+        '</div>';
+    });
+    fileListEl.innerHTML = html;
+
+    var items = fileListEl.querySelectorAll('.file-item');
+    items.forEach(function(item) {
+      item.addEventListener('dragstart', function(e) { dragIndex = parseInt(item.dataset.index); item.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+      item.addEventListener('dragend', function() { item.classList.remove('dragging'); document.querySelectorAll('.file-item').forEach(function(el) { el.classList.remove('drag-over'); }); });
+      item.addEventListener('dragover', function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; document.querySelectorAll('.file-item').forEach(function(el) { el.classList.remove('drag-over'); }); item.classList.add('drag-over'); });
+      item.addEventListener('dragleave', function() { item.classList.remove('drag-over'); });
+      item.addEventListener('drop', function(e) { e.preventDefault(); item.classList.remove('drag-over'); var to = parseInt(item.dataset.index); if (dragIndex !== null && dragIndex !== to) { var m = files.splice(dragIndex, 1)[0]; files.splice(to, 0, m); render(); } dragIndex = null; });
+    });
+
+    fileListEl.querySelectorAll('.remove-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) { e.stopPropagation(); removeFile(btn.dataset.id); });
+    });
+  }
+
+  async function mergePDFs() {
+    if (files.length < 2) { showToast('至少需要 2 个 PDF 文件'); return; }
+    mergeBtn.disabled = true;
+    previewCard.style.display = 'none';
+    setStatus('正在处理...'); setProgress(0);
+
+    try {
+      const mergedPdf = await PDFLib.PDFDocument.create();
+      for (var i = 0; i < files.length; i++) {
+        setStatus('正在合并: ' + files[i].name + ' (' + (i + 1) + '/' + files.length + ')');
+        setProgress((i / files.length) * 90);
+        var buf = await files[i].file.arrayBuffer();
+        var pdf = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+        var pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        pages.forEach(function(p) { mergedPdf.addPage(p); });
+      }
+      setProgress(95); setStatus('正在生成...');
+      var bytes = await mergedPdf.save();
+      setProgress(100); setStatus('完成！');
+
+      if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+      var blob = new Blob([bytes], { type: 'application/pdf' });
+      lastBlobUrl = URL.createObjectURL(blob);
+
+      previewIframe.src = lastBlobUrl;
+      previewInfo.textContent = '合并完成 · ' + mergedPdf.getPageCount() + ' 页 · ' + (blob.size / 1024).toFixed(1) + ' KB';
+      previewCard.style.display = 'block';
+      previewCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      showToast('合并完成！共 ' + mergedPdf.getPageCount() + ' 页');
+    } catch (err) {
+      showToast('合并失败：' + err.message);
+      setStatus('出错了，请重试');
+    } finally {
+      mergeBtn.disabled = false;
+      setTimeout(hideProgress, 3000);
+    }
+  }
+
+  dropZone.addEventListener('click', function() { fileInput.click(); });
+  fileInput.addEventListener('change', function() { addFiles(fileInput.files); fileInput.value = ''; });
+  dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('dragover'); });
+  dropZone.addEventListener('drop', function(e) { e.preventDefault(); dropZone.classList.remove('dragover'); addFiles(e.dataTransfer.files); });
+  mergeBtn.addEventListener('click', mergePDFs);
+  clearBtn.addEventListener('click', clearAll);
+  closePreviewBtn.addEventListener('click', function() { previewCard.style.display = 'none'; previewIframe.src = ''; });
+  downloadBtn.addEventListener('click', function() {
+    if (!lastBlobUrl) return;
+    var a = document.createElement('a'); a.href = lastBlobUrl; a.download = '合并后.pdf';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+
+  render();
+</script>
+</body>
+</html>
