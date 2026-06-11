@@ -2,9 +2,13 @@
 
 > 浏览器本地工具集 — 纯前端，文件不上传服务器
 
-一个纯前端、**文件不上传服务器** 的工具集。所有操作在浏览器本地完成。
+纯前端、**文件不上传服务器** 的工具合集。所有操作在浏览器本地完成。
 
-## 功能
+## 工具列表
+
+### [PDF 装订坊](pdf-tools.html)
+
+PDF 处理工具 — 合并、插入页面、导出、图片转 PDF。
 
 | 模式 | 说明 |
 |------|------|
@@ -13,19 +17,18 @@
 | **导出** | 从 PDF 中提取指定页面（全部/奇数页/偶数页/自定义范围） |
 | **图片转 PDF** | 将多张图片合并为一个 PDF，每张图片为一页 |
 
+> **Windows 用户注意**：下载的 PDF 如果打开时报错，请右键该 PDF 文件 → **属性** → 勾选 **解除锁定** → 确定，然后重新打开。
+
 ## 使用
 
-直接用浏览器打开 `pdf-tools.html` 即可，无需安装任何东西。
+各工具可直接用浏览器打开对应的 `.html` 文件，无需安装。
 
-也可在线使用：[https://xiyunzhang0401.github.io/useful-tools/pdf-tools.html](https://xiyunzhang0401.github.io/useful-tools/pdf-tools.html)
-
-> **Windows 用户注意**：下载的 PDF 如果打开时报错，请右键该 PDF 文件 → **属性** → 勾选 **解除锁定** → 确定，然后重新打开。
+在线使用：[https://xiyunzhang0401.github.io/useful-tools/](https://xiyunzhang0401.github.io/useful-tools/)
 
 ## 技术
 
-- [pdf-lib](https://pdf-lib.org/) — PDF 创建与编辑
-- [PDF.js](https://mozilla.github.io/pdf.js/) — PDF 渲染与预览
 - 纯 HTML/CSS/JS，无后端依赖
+- [pdf-lib](https://pdf-lib.org/) + [PDF.js](https://mozilla.github.io/pdf.js/) — PDF 处理
 
 ## 隐私
 
