@@ -6,7 +6,7 @@
 
 ## 工具列表
 
-### [PDF 装订坊](pdf-tools.html)
+### [PDF 装订坊](pdf-tools/)
 
 PDF 处理工具 — 合并、插入页面、导出、图片转 PDF。
 
@@ -24,6 +24,10 @@ PDF 处理工具 — 合并、插入页面、导出、图片转 PDF。
 各工具可直接用浏览器打开对应的 `.html` 文件，无需安装。
 
 在线使用：[https://xiyunzhang0401.github.io/useful-tools/](https://xiyunzhang0401.github.io/useful-tools/)
+
+| 工具 | 链接 |
+|------|------|
+| PDF 装订坊 | [/useful-tools/pdf-tools/](https://xiyunzhang0401.github.io/useful-tools/pdf-tools/) |
 
 ## 技术
 
