@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>有用工具</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f6fa;
+    color: #2c3e50;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 20px;
+  }
+  .container { max-width: 680px; width: 100%; }
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .subtitle {
+    color: #7f8c8d;
+    text-align: center;
+    margin-bottom: 40px;
+    font-size: 1rem;
+  }
+  .tool-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: box-shadow 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+  }
+  .tool-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+  .tool-card h2 { font-size: 1.2rem; font-weight: 600; }
+  .tool-card p { color: #7f8c8d; font-size: 0.9rem; margin-top: 4px; }
+  .tool-card .arrow { color: #bdc3c7; font-size: 1.5rem; }
+  footer {
+    margin-top: 60px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #95a5a6;
+  }
+  footer a { color: #3498db; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>有用工具</h1>
+  <p class="subtitle">纯前端 · 文件不上传服务器</p>
+
+  <a class="tool-card" href="pdf-tools/">
+    <div>
+      <h2>PDF 装订坊</h2>
+      <p>合并 · 插入 · 导出 · 图片转 PDF</p>
+    </div>
+    <div class="arrow">→</div>
+  </a>
+
+  <footer>
+    <p>更多工具开发中…</p>
+    <p><a href="https://github.com/XiyunZhang0401/useful-tools">GitHub</a></p>
+  </footer>
+</div>
+</body>
+</html>
