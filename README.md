@@ -1,8 +1,8 @@
-# PDF 装订坊
+# 有用工具
 
-> 浏览器本地 PDF 工具集 — 合并 · 插入 · 导出 · 图片转 PDF
+> 浏览器本地工具集 — 纯前端，文件不上传服务器
 
-一个纯前端、**文件不上传服务器** 的 PDF 处理页面。基于 [pdf-lib](https://pdf-lib.org/) + [PDF.js](https://mozilla.github.io/pdf.js/) 在浏览器本地完成所有操作。
+一个纯前端、**文件不上传服务器** 的工具集。所有操作在浏览器本地完成。
 
 ## 功能
 
@@ -17,7 +17,7 @@
 
 直接用浏览器打开 `pdf-tools.html` 即可，无需安装任何东西。
 
-也可在线使用：[https://xiyunzhang0401.github.io/pdf-tools/pdf-tools.html](https://xiyunzhang0401.github.io/pdf-tools/pdf-tools.html)
+也可在线使用：[https://xiyunzhang0401.github.io/useful-tools/pdf-tools.html](https://xiyunzhang0401.github.io/useful-tools/pdf-tools.html)
 
 > **Windows 用户注意**：下载的 PDF 如果打开时报错，请右键该 PDF 文件 → **属性** → 勾选 **解除锁定** → 确定，然后重新打开。
 
